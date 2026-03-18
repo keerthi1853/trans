@@ -1,0 +1,12 @@
+{
+  "admin@upi.com": {
+    "name": "Admin User",
+    "email": "admin@upi.com",
+    "password_hash": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"
+  },
+  "22jr1a4395@gmail.com": {
+    "name": "keerthi",
+    "email": "22jr1a4395@gmail.com",
+    "password_hash": "17756315ebd47b7110359fc7b168179bf6f2df3646fcc888bc8aa05c78b38ac1"
+  }
+}
