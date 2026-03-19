@@ -26,9 +26,6 @@
       <article class="card risk-form-card">
         <h2>Transaction Input</h2>
         <form id="risk-form" class="risk-form">
-          <label>Account Number or Phone Number</label>
-          <input id="account-or-phone" type="text" placeholder="Enter registered account or phone" required />
-
           <label>Transaction Type</label>
           <select id="transaction-type">
             <option>P2P Transfer</option>
@@ -118,18 +115,10 @@
             <p>UPI_Fraud_Detection_Model_Fixed.pkl is loaded for transaction verification.</p>
           </div>
           <div class="rule-item blocked">
-            <h3>Profile Lookup Stage</h3>
-            <p>Account/Phone is used to fetch that user's history automatically for verification.</p>
+            <h3>Inference Stage</h3>
+            <p>Current transaction details are sent to the trained model for verification.</p>
           </div>
         </div>
-        {% if sample_one %}
-        <p class="hint">Sample Phone: <code>{{ sample_one.phone }}</code></p>
-        <p class="hint">Sample Account: <code>{{ sample_one.account }}</code></p>
-        {% endif %}
-        {% if sample_two %}
-        <p class="hint">Sample Phone: <code>{{ sample_two.phone }}</code></p>
-        <p class="hint">Sample Account: <code>{{ sample_two.account }}</code></p>
-        {% endif %}
       </article>
     </section>
   </main>

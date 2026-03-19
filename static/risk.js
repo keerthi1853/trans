@@ -15,7 +15,6 @@ riskForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const payload = {
-    account_or_phone: document.getElementById("account-or-phone").value.trim(),
     amount: Number(document.getElementById("amount").value),
     transaction_type: document.getElementById("transaction-type").value,
     payment_gateway: document.getElementById("payment-gateway").value,
