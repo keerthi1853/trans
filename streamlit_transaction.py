@@ -43,38 +43,51 @@ def probability_to_bucket(probability: float) -> str:
 
 
 def score_with_model(artifact: dict, tx: dict) -> float:
+    # New artifact format: sklearn pipeline trained on upi_fraud_dataset.csv
+    if "pipeline" in artifact:
+        pipeline = artifact["pipeline"]
+        row = pd.DataFrame(
+            [
+                {
+                    "Transaction_Amount": float(tx["amount"]),
+                    "Transaction_Type": tx["transaction_type"],
+                    "Time_of_Transaction": int(tx["time_of_transaction"]),
+                    "Device_Used": tx["device_used"],
+                    "Location": tx["location"],
+                    "Previous_Fraudulent_Transactions": int(tx["previous_fraud_txn"]),
+                    "Account_Age": int(tx["account_age"]),
+                    "Number_of_Transactions_Last_24H": int(tx["txn_last_24h"]),
+                    "Payment_Method": tx["payment_method"],
+                }
+            ]
+        )
+        probability = float(pipeline.predict_proba(row)[:, 1][0])
+        return max(0.0, min(1.0, probability))
+
+    # Legacy artifact support
     feature_columns = artifact.get("feature_columns", [])
     scaler = artifact.get("scaler")
     model = artifact.get("model")
-
-    duration_to_freq = {
-        "Instant (0-10 sec)": 1,
-        "Quick (under 2 min)": 3,
-        "Standard (2-30 min)": 6,
-        "Scheduled": 2,
-    }
-
     row = pd.DataFrame(
         [
             {
                 "amount": float(tx["amount"]),
-                "Transaction_Frequency": float(duration_to_freq.get(tx["transfer_duration"], 2)),
+                "Transaction_Frequency": float(tx["txn_last_24h"]),
                 "Transaction_Type": tx["transaction_type"],
                 "Payment_Gateway": tx["payment_platform"],
-                "Merchant_Category": tx["merchant_category"],
-                "Device_OS": tx["device_os"],
+                "Merchant_Category": tx["location"],
+                "Device_OS": tx["device_used"],
             }
         ]
     )
-
     encoded = pd.get_dummies(row)
     aligned = encoded.reindex(columns=feature_columns, fill_value=0)
     data = scaler.transform(aligned) if scaler is not None else aligned
-
-    if hasattr(model, "predict_proba"):
-        probability = float(model.predict_proba(data)[:, 1][0])
-    else:
-        probability = float(model.predict(data)[0])
+    probability = (
+        float(model.predict_proba(data)[:, 1][0])
+        if hasattr(model, "predict_proba")
+        else float(model.predict(data)[0])
+    )
     return max(0.0, min(1.0, probability))
 
 
@@ -146,19 +159,30 @@ with tab2:
             ["P2P Transfer", "P2M Payment", "Bill Payment", "Recharge", "Subscription"],
         )
 
-        merchant_category = st.selectbox(
-            "Merchant Category",
-            ["Grocery", "Food", "Travel", "Utilities", "Shopping", "Other"],
+        device_used = st.selectbox(
+            "Device Used",
+            ["Android", "iOS", "Web"],
         )
 
-        device_os = st.selectbox(
-            "Device OS",
-            ["Android", "iOS", "Other"],
+        location = st.selectbox(
+            "Location",
+            ["Home State", "Different State", "International"],
         )
 
         transfer_duration = st.selectbox(
             "Transfer Duration",
             ["Instant (0-10 sec)", "Quick (under 2 min)", "Standard (2-30 min)", "Scheduled"],
+        )
+
+        time_of_transaction = st.slider("Hour of Transaction", 0, 23, 12)
+        previous_fraud_txn = st.number_input(
+            "Previous Fraudulent Transactions", min_value=0, max_value=20, value=0, step=1
+        )
+        account_age = st.number_input(
+            "Account Age (days)", min_value=1, max_value=5000, value=365, step=1
+        )
+        txn_last_24h = st.number_input(
+            "Number of Transactions in Last 24H", min_value=0, max_value=200, value=3, step=1
         )
 
         amount = st.number_input("Amount (INR)", min_value=1, step=100, value=1000)
@@ -175,10 +199,15 @@ with tab2:
     tx = {
         "amount": amount,
         "payment_platform": payment_platform,
+        "payment_method": "UPI PIN" if payment_platform != "Bank UPI App" else "Biometric",
         "transaction_type": transaction_type,
-        "merchant_category": merchant_category,
-        "device_os": device_os,
+        "device_used": device_used,
+        "location": location,
         "transfer_duration": transfer_duration,
+        "time_of_transaction": time_of_transaction,
+        "previous_fraud_txn": previous_fraud_txn,
+        "account_age": account_age,
+        "txn_last_24h": txn_last_24h,
     }
     if amount > 99999:
         level = "Blocked"
