@@ -1,5 +1,7 @@
 import random
 import pickle
+import json
+import hashlib
 from pathlib import Path
 
 import pandas as pd
@@ -21,9 +23,15 @@ if "otp_verified" not in st.session_state:
     st.session_state.otp_verified = False
 if "otp_tx_key" not in st.session_state:
     st.session_state.otp_tx_key = None
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+if "user_name" not in st.session_state:
+    st.session_state.user_name = ""
 
 
 MODEL_PATH = Path(__file__).resolve().parent / "UPI_Fraud_Detection_Model_Fixed.pkl"
+USER_PATH = Path(__file__).resolve().parent / "users.json"
+FEEDBACK_PATH = Path(__file__).resolve().parent / "feedback.csv"
 
 
 @st.cache_resource(show_spinner=False)
@@ -32,6 +40,42 @@ def load_model_artifact():
         return None
     with MODEL_PATH.open("rb") as f:
         return pickle.load(f)
+
+
+def load_users() -> dict:
+    default_users = {"admin@upi.com": {"name": "Admin User", "password": "admin123"}}
+    if not USER_PATH.exists():
+        USER_PATH.write_text(json.dumps(default_users, indent=2), encoding="utf-8")
+        return default_users
+    try:
+        users = json.loads(USER_PATH.read_text(encoding="utf-8"))
+        if isinstance(users, dict) and users:
+            return users
+    except Exception:
+        pass
+    return default_users
+
+
+def show_login_page() -> None:
+    st.title("UPI Shield Login")
+    st.caption("Sign in to access transaction dashboard")
+
+    with st.form("login_form"):
+        email = st.text_input("Email")
+        password = st.text_input("Password", type="password")
+        submitted = st.form_submit_button("Login")
+
+    if submitted:
+        users = load_users()
+        user = users.get(email.strip().lower())
+        password_hash = hashlib.sha256(password.encode("utf-8")).hexdigest()
+        if user and (user.get("password") == password or user.get("password_hash") == password_hash):
+            st.session_state.authenticated = True
+            st.session_state.user_name = user.get("name", "User")
+            st.rerun()
+        st.error("Invalid email or password.")
+
+    st.info("Demo login: admin@upi.com / admin123")
 
 
 def probability_to_bucket(probability: float) -> str:
@@ -113,6 +157,16 @@ def show_transaction_summary(data: dict, transfer_allowed_text: str, decision_te
 st.title("UPI Shield Dashboard")
 top_notice = st.empty()
 
+if not st.session_state.authenticated:
+    show_login_page()
+    st.stop()
+
+st.sidebar.markdown(f"Logged in as: **{st.session_state.user_name}**")
+if st.sidebar.button("Logout"):
+    st.session_state.authenticated = False
+    st.session_state.user_name = ""
+    st.rerun()
+
 artifact = load_model_artifact()
 if artifact is None:
     st.error(
@@ -121,7 +175,7 @@ if artifact is None:
     )
     st.stop()
 
-tab1, tab2 = st.tabs(["Main Page", "Risk Scoring"])
+tab1, tab2, tab3 = st.tabs(["Main Page", "Risk Scoring", "Feedback"])
 
 with tab1:
     st.subheader("Mission")
@@ -140,7 +194,8 @@ with tab1:
     st.markdown(
         "- Secure transaction risk evaluation\n"
         "- OTP-based verification for medium-risk transfers\n"
-        "- Automatic warning notifications for high-risk transfers"
+        "- Automatic warning notifications for high-risk transfers\n"
+        "- User feedback collection for service improvement"
     )
 
 with tab2:
@@ -246,7 +301,11 @@ with tab2:
         st.session_state.otp_code = None
         st.session_state.otp_verified = False
         st.session_state.otp_tx_key = None
-        show_transaction_summary(tx, "Yes", "Transaction can proceed.")
+        show_transaction_summary(
+            tx,
+            "Yes",
+            "Normal transaction, safe to continue.",
+        )
     else:
         top_notice.info("OTP verification required for this transaction.")
 
@@ -285,3 +344,33 @@ with tab2:
             else:
                 st.error("Invalid OTP. Transaction stopped.")
                 st.session_state.otp_verified = False
+
+with tab3:
+    st.subheader("Feedback Form")
+    st.caption("Share your experience to help us improve this service.")
+
+    with st.form("feedback_form"):
+        name = st.text_input("Name")
+        email = st.text_input("Email")
+        rating = st.slider("Rating", 1, 5, 4)
+        feedback_text = st.text_area("Your Feedback")
+        submit_feedback = st.form_submit_button("Submit Feedback")
+
+    if submit_feedback:
+        row = pd.DataFrame(
+            [
+                {
+                    "name": name.strip(),
+                    "email": email.strip(),
+                    "rating": rating,
+                    "feedback": feedback_text.strip(),
+                }
+            ]
+        )
+        if FEEDBACK_PATH.exists():
+            old = pd.read_csv(FEEDBACK_PATH)
+            out = pd.concat([old, row], ignore_index=True)
+        else:
+            out = row
+        out.to_csv(FEEDBACK_PATH, index=False)
+        st.success("Thank you. Your feedback has been submitted.")
