@@ -17,24 +17,66 @@
   </header>
 
   <main class="container">
-    <section class="card">
-      <h2>Risk Rules</h2>
-      <ul>
-        <li>More than 1L is not possible to transfer.</li>
-        <li>More than 10k to 50k is Medium Risk.</li>
-        <li>Above 50k to 1L is High Risk.</li>
-        <li>Up to 10k is Low Risk.</li>
-      </ul>
+    <section class="hero risk-hero">
+      <h2>Transaction Safety Check</h2>
+      <p>Enter the transfer amount and instantly see the allowed status and risk level based on your rules.</p>
     </section>
 
-    <section class="card">
-      <h2>Check Transfer Risk Level</h2>
-      <form id="risk-form">
-        <label>Enter Amount (INR)</label>
-        <input id="amount" type="number" min="0" placeholder="Example: 25000" required />
-        <button type="submit">Check Risk</button>
-      </form>
-      <div id="risk-result" class="result hidden"></div>
+    <section class="risk-layout">
+      <article class="card risk-rules-card">
+        <h2>Risk Rules</h2>
+        <div class="rule-list">
+          <div class="rule-item low">
+            <h3>Low Risk</h3>
+            <p>Up to INR 10,000</p>
+          </div>
+          <div class="rule-item medium">
+            <h3>Medium Risk</h3>
+            <p>More than INR 10,000 to INR 50,000</p>
+          </div>
+          <div class="rule-item high">
+            <h3>High Risk</h3>
+            <p>Above INR 50,000 to INR 1,00,000</p>
+          </div>
+          <div class="rule-item blocked">
+            <h3>Blocked</h3>
+            <p>More than INR 1,00,000 is not possible to transfer</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="card risk-form-card">
+        <h2>Check Transfer Risk</h2>
+        <form id="risk-form" class="risk-form">
+          <label for="amount">Transfer Amount (INR)</label>
+          <div class="amount-input-wrap">
+            <span class="currency">INR</span>
+            <input id="amount" type="number" min="0" placeholder="Example: 25000" required />
+          </div>
+          <button type="submit">Evaluate Amount</button>
+        </form>
+
+        <div id="risk-result" class="result hidden">
+          <div class="result-head">
+            <span class="result-label">Risk Level</span>
+            <span id="risk-badge" class="risk-badge">-</span>
+          </div>
+          <div class="result-grid">
+            <div class="result-row">
+              <span>Entered Amount</span>
+              <strong id="result-amount">-</strong>
+            </div>
+            <div class="result-row">
+              <span>Transfer Allowed</span>
+              <strong id="result-allowed">-</strong>
+            </div>
+            <div class="result-row result-row-full">
+              <span>Decision</span>
+              <strong id="result-decision">-</strong>
+            </div>
+          </div>
+        </div>
+      </article>
     </section>
   </main>
 

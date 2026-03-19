@@ -221,3 +221,126 @@ ul {
 .risk-blocked {
   border-left: 5px solid #7a1f1f;
 }
+
+.risk-hero p {
+  margin-bottom: 0;
+  color: var(--muted);
+}
+
+.risk-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.risk-rules-card h2,
+.risk-form-card h2 {
+  margin-bottom: 12px;
+}
+
+.rule-list {
+  display: grid;
+  gap: 10px;
+}
+
+.rule-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #f9fbff;
+}
+
+.rule-item h3 {
+  margin: 0 0 4px;
+  font-size: 0.98rem;
+}
+
+.rule-item p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.rule-item.low {
+  border-left: 5px solid #1e8e3e;
+}
+
+.rule-item.medium {
+  border-left: 5px solid #f59e0b;
+}
+
+.rule-item.high {
+  border-left: 5px solid #d93025;
+}
+
+.rule-item.blocked {
+  border-left: 5px solid #7a1f1f;
+}
+
+.risk-form {
+  margin-bottom: 8px;
+}
+
+.amount-input-wrap {
+  display: grid;
+  grid-template-columns: 66px 1fr;
+  gap: 8px;
+}
+
+.currency {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  color: var(--muted);
+  background: #f8fbff;
+}
+
+.result-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.result-label {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.risk-badge {
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.result-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.95rem;
+}
+
+.result-row-full {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+@media (max-width: 860px) {
+  .risk-layout {
+    grid-template-columns: 1fr;
+  }
+}
