@@ -29,7 +29,7 @@ registerForm.addEventListener("submit", async (event) => {
   if (response.ok && data.ok) {
     showMessage("Registration successful. Redirecting...", "success");
     setTimeout(() => {
-      window.location.href = data.redirect || "/home";
+      window.location.href = "/login";
     }, 700);
     return;
   }

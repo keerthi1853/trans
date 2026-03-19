@@ -63,6 +63,7 @@ label {
 }
 
 input,
+select,
 button {
   width: 100%;
   border-radius: 10px;
@@ -279,6 +280,17 @@ ul {
 
 .risk-form {
   margin-bottom: 8px;
+}
+
+.checkbox-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox-wrap input {
+  width: auto;
+  margin: 0;
 }
 
 .amount-input-wrap {

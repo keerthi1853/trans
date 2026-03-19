@@ -8,46 +8,50 @@ const resultDecision = document.getElementById("result-decision");
 function classForLevel(level) {
   if (level === "Low") return "risk-low";
   if (level === "Medium") return "risk-medium";
-  if (level === "High") return "risk-high";
-  return "risk-blocked";
-}
-
-function badgeStyle(level) {
-  if (level === "Low") return { bg: "#dcfce7", fg: "#166534" };
-  if (level === "Medium") return { bg: "#fef3c7", fg: "#92400e" };
-  if (level === "High") return { bg: "#fee2e2", fg: "#991b1b" };
-  return { bg: "#ede9fe", fg: "#5b21b6" };
+  return "risk-high";
 }
 
 riskForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const amount = Number(document.getElementById("amount").value);
 
-  const response = await fetch("/api/risk-level", {
+  const payload = {
+    amount: Number(document.getElementById("amount").value),
+    transaction_type: document.getElementById("transaction-type").value,
+    payment_gateway: document.getElementById("payment-gateway").value,
+    device_used: document.getElementById("device-used").value,
+    location: document.getElementById("location").value,
+    payment_method: document.getElementById("payment-method").value,
+    time_of_transaction: Number(document.getElementById("time-of-transaction").value),
+    previous_fraudulent_transactions: Number(
+      document.getElementById("previous-fraudulent-transactions").value
+    ),
+    account_age: Number(document.getElementById("account-age").value),
+    number_of_transactions_last_24h: Number(
+      document.getElementById("number-of-transactions-last-24h").value
+    ),
+    confirmed: document.getElementById("confirmed").checked,
+  };
+
+  const response = await fetch("/api/transaction-verification", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ amount }),
+    body: JSON.stringify(payload),
   });
   const data = await response.json();
 
   if (!response.ok || !data.ok) {
     resultBox.className = "result";
-    if (riskBadge && resultAmount && resultAllowed && resultDecision) {
-      riskBadge.textContent = "Error";
-      resultAmount.textContent = "-";
-      resultAllowed.textContent = "-";
-      resultDecision.textContent = data.message || "Unable to evaluate amount.";
-    }
+    riskBadge.textContent = "Error";
+    resultAmount.textContent = "-";
+    resultAllowed.textContent = "-";
+    resultDecision.textContent = data.message || "Unable to verify transaction.";
     resultBox.classList.remove("hidden");
     return;
   }
 
   resultBox.className = `result ${classForLevel(data.level)}`;
-  const style = badgeStyle(data.level);
   riskBadge.textContent = data.level;
-  riskBadge.style.backgroundColor = style.bg;
-  riskBadge.style.color = style.fg;
-  resultAmount.textContent = `INR ${amount.toLocaleString("en-IN")}`;
+  resultAmount.textContent = `INR ${payload.amount.toLocaleString("en-IN")}`;
   resultAllowed.textContent = data.allowed ? "Yes" : "No";
   resultDecision.textContent = data.message;
   resultBox.classList.remove("hidden");

@@ -8,7 +8,7 @@
 </head>
 <body>
   <header class="topbar">
-    <h1>Risk Scoring Dashboard</h1>
+    <h1>Transaction Verification</h1>
     <div class="topbar-right">
       <span>User: <strong>{{ username }}</strong></span>
       <a class="btn ghost small" href="{{ url_for('home_page') }}">Back to Main Page</a>
@@ -18,47 +18,80 @@
 
   <main class="container">
     <section class="hero risk-hero">
-      <h2>Transaction Safety Check</h2>
-      <p>Enter the transfer amount and instantly see the allowed status and risk level based on your rules.</p>
+      <h2>Verify Transaction Using ML Model</h2>
+      <p>This page uses the trained model from your project data stages to verify each transaction.</p>
     </section>
 
     <section class="risk-layout">
-      <article class="card risk-rules-card">
-        <h2>Risk Rules</h2>
-        <div class="rule-list">
-          <div class="rule-item low">
-            <h3>Low Risk</h3>
-            <p>Up to INR 10,000</p>
-          </div>
-          <div class="rule-item medium">
-            <h3>Medium Risk</h3>
-            <p>More than INR 10,000 to INR 50,000</p>
-          </div>
-          <div class="rule-item high">
-            <h3>High Risk</h3>
-            <p>Above INR 50,000 to INR 1,00,000</p>
-          </div>
-          <div class="rule-item blocked">
-            <h3>Blocked</h3>
-            <p>More than INR 1,00,000 is not possible to transfer</p>
-          </div>
-        </div>
-      </article>
-
       <article class="card risk-form-card">
-        <h2>Check Transfer Risk</h2>
+        <h2>Transaction Input</h2>
         <form id="risk-form" class="risk-form">
+          <label>Transaction Type</label>
+          <select id="transaction-type">
+            <option>P2P Transfer</option>
+            <option>P2M Payment</option>
+            <option>Bill Payment</option>
+            <option>Recharge</option>
+            <option>Subscription</option>
+          </select>
+
+          <label>Payment Platform</label>
+          <select id="payment-gateway">
+            <option>GooglePay</option>
+            <option>PhonePe</option>
+            <option>Paytm</option>
+            <option>BHIM</option>
+            <option>AmazonPay</option>
+          </select>
+
+          <label>Device Used</label>
+          <select id="device-used">
+            <option>Android</option>
+            <option>iOS</option>
+            <option>Web</option>
+          </select>
+
+          <label>Location</label>
+          <select id="location">
+            <option>Home State</option>
+            <option>Different State</option>
+            <option>International</option>
+          </select>
+
+          <label>Payment Method</label>
+          <select id="payment-method">
+            <option>UPI PIN</option>
+            <option>Biometric</option>
+            <option>OTP</option>
+          </select>
+
+          <label>Time of Transaction (0-23)</label>
+          <input id="time-of-transaction" type="number" min="0" max="23" value="12" required />
+
+          <label>Previous Fraudulent Transactions</label>
+          <input id="previous-fraudulent-transactions" type="number" min="0" value="0" required />
+
+          <label>Account Age (days)</label>
+          <input id="account-age" type="number" min="1" value="365" required />
+
+          <label>Number of Transactions Last 24H</label>
+          <input id="number-of-transactions-last-24h" type="number" min="0" value="3" required />
+
           <label for="amount">Transfer Amount (INR)</label>
           <div class="amount-input-wrap">
             <span class="currency">INR</span>
             <input id="amount" type="number" min="0" placeholder="Example: 25000" required />
           </div>
-          <button type="submit">Evaluate Amount</button>
+          <label class="checkbox-wrap">
+            <input id="confirmed" type="checkbox" />
+            <span>User confirmation completed (for medium risk)</span>
+          </label>
+          <button type="submit">Verify Transaction</button>
         </form>
 
         <div id="risk-result" class="result hidden">
           <div class="result-head">
-            <span class="result-label">Risk Level</span>
+            <span class="result-label">Verification Result</span>
             <span id="risk-badge" class="risk-badge">-</span>
           </div>
           <div class="result-grid">
@@ -74,6 +107,24 @@
               <span>Decision</span>
               <strong id="result-decision">-</strong>
             </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="card risk-rules-card">
+        <h2>Data Stages Used</h2>
+        <div class="rule-list">
+          <div class="rule-item low">
+            <h3>Dataset Stage</h3>
+            <p>upi_fraud_dataset.csv is used for model training.</p>
+          </div>
+          <div class="rule-item medium">
+            <h3>Training Stage</h3>
+            <p>train_model_from_dataset.py creates the trained model.</p>
+          </div>
+          <div class="rule-item high">
+            <h3>Model Stage</h3>
+            <p>UPI_Fraud_Detection_Model_Fixed.pkl is loaded for transaction verification.</p>
           </div>
         </div>
       </article>
