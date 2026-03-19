@@ -1,5 +1,8 @@
 import random
+import pickle
+from pathlib import Path
 
+import pandas as pd
 import streamlit as st
 
 
@@ -20,14 +23,59 @@ if "otp_tx_key" not in st.session_state:
     st.session_state.otp_tx_key = None
 
 
-def risk_from_amount(amount: float) -> str:
-    if amount > 99999:
-        return "Blocked"
-    if amount > 50000:
-        return "High"
-    if amount > 10000:
+MODEL_PATH = Path(__file__).resolve().parent / "UPI_Fraud_Detection_Model_Fixed.pkl"
+
+
+@st.cache_resource(show_spinner=False)
+def load_model_artifact():
+    if not MODEL_PATH.exists():
+        return None
+    with MODEL_PATH.open("rb") as f:
+        return pickle.load(f)
+
+
+def probability_to_bucket(probability: float) -> str:
+    if probability <= 0.35:
+        return "Low"
+    if probability <= 0.70:
         return "Medium"
-    return "Low"
+    return "High"
+
+
+def score_with_model(artifact: dict, tx: dict) -> float:
+    feature_columns = artifact.get("feature_columns", [])
+    scaler = artifact.get("scaler")
+    model = artifact.get("model")
+
+    duration_to_freq = {
+        "Instant (0-10 sec)": 1,
+        "Quick (under 2 min)": 3,
+        "Standard (2-30 min)": 6,
+        "Scheduled": 2,
+    }
+
+    row = pd.DataFrame(
+        [
+            {
+                "amount": float(tx["amount"]),
+                "Transaction_Frequency": float(duration_to_freq.get(tx["transfer_duration"], 2)),
+                "Transaction_Type": tx["transaction_type"],
+                "Payment_Gateway": tx["payment_platform"],
+                "Merchant_Category": tx["merchant_category"],
+                "Device_OS": tx["device_os"],
+            }
+        ]
+    )
+
+    encoded = pd.get_dummies(row)
+    aligned = encoded.reindex(columns=feature_columns, fill_value=0)
+    data = scaler.transform(aligned) if scaler is not None else aligned
+
+    if hasattr(model, "predict_proba"):
+        probability = float(model.predict_proba(data)[:, 1][0])
+    else:
+        probability = float(model.predict(data)[0])
+    return max(0.0, min(1.0, probability))
 
 
 def tx_key(data: dict) -> str:
@@ -51,6 +99,14 @@ def show_transaction_summary(data: dict, transfer_allowed_text: str, decision_te
 
 st.title("UPI Shield Dashboard")
 top_notice = st.empty()
+
+artifact = load_model_artifact()
+if artifact is None:
+    st.error(
+        "Model file not found: UPI_Fraud_Detection_Model_Fixed.pkl. "
+        "Place this file in the trans folder and refresh."
+    )
+    st.stop()
 
 tab1, tab2 = st.tabs(["Main Page", "Risk Scoring"])
 
@@ -90,6 +146,16 @@ with tab2:
             ["P2P Transfer", "P2M Payment", "Bill Payment", "Recharge", "Subscription"],
         )
 
+        merchant_category = st.selectbox(
+            "Merchant Category",
+            ["Grocery", "Food", "Travel", "Utilities", "Shopping", "Other"],
+        )
+
+        device_os = st.selectbox(
+            "Device OS",
+            ["Android", "iOS", "Other"],
+        )
+
         transfer_duration = st.selectbox(
             "Transfer Duration",
             ["Instant (0-10 sec)", "Quick (under 2 min)", "Standard (2-30 min)", "Scheduled"],
@@ -101,18 +167,24 @@ with tab2:
         st.info(
             "Rules:\n"
             "- More than INR 99,999: not supported\n"
-            "- INR 10,001 to 50,000: medium (OTP required)\n"
-            "- INR 50,001 to 99,999: high (warning)\n"
-            "- Up to INR 10,000: low"
+            "- ML model predicts transaction risk\n"
+            "- Medium output: OTP required\n"
+            "- High output: warning notification"
         )
 
     tx = {
         "amount": amount,
         "payment_platform": payment_platform,
         "transaction_type": transaction_type,
+        "merchant_category": merchant_category,
+        "device_os": device_os,
         "transfer_duration": transfer_duration,
     }
-    level = risk_from_amount(amount)
+    if amount > 99999:
+        level = "Blocked"
+    else:
+        probability = score_with_model(artifact, tx)
+        level = probability_to_bucket(probability)
     current_tx_key = tx_key(tx)
 
     if level == "Blocked":
@@ -128,13 +200,17 @@ with tab2:
         )
     elif level == "High":
         top_notice.warning(
-            "Warning notification: Large amount transaction detected. Please re-check before confirming."
+            "Warning notification: High-risk transaction detected by ML model."
         )
         st.session_state.pending_medium = None
         st.session_state.otp_code = None
         st.session_state.otp_verified = False
         st.session_state.otp_tx_key = None
-        show_transaction_summary(tx, "Yes", "Transaction can proceed with warning notification.")
+        show_transaction_summary(
+            tx,
+            "Yes",
+            "Transaction can proceed with warning notification.",
+        )
     elif level == "Low":
         top_notice.success("Transaction is within normal range.")
         st.session_state.pending_medium = None
