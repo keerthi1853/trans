@@ -4,6 +4,8 @@ import json
 import os
 import pickle
 import re
+from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 
 import pandas as pd
@@ -19,6 +21,7 @@ BASE_DIR = Path(__file__).resolve().parent
 USER_STORE_PATH = BASE_DIR / "users.json"
 FEEDBACK_PATH = BASE_DIR / "feedback.csv"
 MODEL_PATH = BASE_DIR / "UPI_Fraud_Detection_Model_Fixed.pkl"
+DATASET_PATH = BASE_DIR / "upi_fraud_dataset.csv"
 
 
 def hash_password(password: str) -> str:
@@ -65,6 +68,64 @@ def load_artifact():
         return None
     with MODEL_PATH.open("rb") as f:
         return pickle.load(f)
+
+
+@lru_cache(maxsize=1)
+def load_profile_index():
+    if not DATASET_PATH.exists():
+        return {}, []
+
+    df = pd.read_csv(DATASET_PATH)
+    required = [
+        "User_ID",
+        "Device_Used",
+        "Location",
+        "Previous_Fraudulent_Transactions",
+        "Account_Age",
+        "Number_of_Transactions_Last_24H",
+        "Payment_Method",
+    ]
+    for col in required:
+        if col not in df.columns:
+            return {}, []
+
+    grouped = df.groupby("User_ID", as_index=False).agg(
+        {
+            "Device_Used": lambda s: s.mode().iat[0] if not s.mode().empty else "Android",
+            "Location": lambda s: s.mode().iat[0] if not s.mode().empty else "Home State",
+            "Previous_Fraudulent_Transactions": "max",
+            "Account_Age": "mean",
+            "Number_of_Transactions_Last_24H": "mean",
+            "Payment_Method": lambda s: s.mode().iat[0] if not s.mode().empty else "UPI PIN",
+        }
+    )
+
+    profile_index = {}
+    samples = []
+    for _, row in grouped.iterrows():
+        user_id = str(row["User_ID"])
+        seed = int(hashlib.sha256(user_id.encode("utf-8")).hexdigest()[:12], 16)
+        phone = f"9{seed % 10**9:09d}"  # 10-digit
+        account = f"{(10**11) + (seed % 9_000_000_000_00):012d}"  # 12-digit
+
+        profile = {
+            "user_id": user_id,
+            "device_used": str(row["Device_Used"]),
+            "location": str(row["Location"]),
+            "previous_fraudulent_transactions": int(row["Previous_Fraudulent_Transactions"]),
+            "account_age": int(round(float(row["Account_Age"]))),
+            "number_of_transactions_last_24h": int(
+                round(float(row["Number_of_Transactions_Last_24H"]))
+            ),
+            "payment_method": str(row["Payment_Method"]),
+        }
+
+        profile_index[phone] = profile
+        profile_index[account] = profile
+        if len(samples) < 2:
+            samples.append({"phone": phone, "account": account, "user_id": user_id})
+
+    return profile_index, samples
 
 
 def probability_to_level(probability: float) -> str:
@@ -159,7 +220,13 @@ def home_page():
 def transaction_verification_page():
     if not session.get("authenticated"):
         return redirect(url_for("index_page"))
-    return render_template("risk_dashboard.html", username=session.get("name", "User"))
+    _, samples = load_profile_index()
+    return render_template(
+        "risk_dashboard.html",
+        username=session.get("name", "User"),
+        sample_one=samples[0] if len(samples) > 0 else None,
+        sample_two=samples[1] if len(samples) > 1 else None,
+    )
 
 
 @app.post("/api/login")
@@ -225,6 +292,21 @@ def api_transaction_verification():
         return jsonify({"ok": False, "message": "Model file not found on server."}), 500
 
     payload = request.get_json(silent=True) or {}
+    identifier = str(payload.get("account_or_phone", "")).strip()
+    profile_index, _ = load_profile_index()
+
+    if not identifier:
+        return jsonify({"ok": False, "message": "Please enter account number or phone number."}), 400
+
+    profile = profile_index.get(identifier)
+    if profile is None:
+        return jsonify(
+            {
+                "ok": False,
+                "message": "Account/Phone number not found. Enter a registered account or phone number.",
+            }
+        ), 404
+
     try:
         amount = float(payload.get("amount", 0))
     except Exception:
@@ -241,7 +323,19 @@ def api_transaction_verification():
             }
         )
 
-    probability = score_transaction(artifact, payload)
+    model_payload = {
+        "amount": amount,
+        "transaction_type": payload.get("transaction_type", "P2P Transfer"),
+        "payment_gateway": payload.get("payment_gateway", "PhonePe"),
+        "device_used": profile["device_used"],
+        "location": profile["location"],
+        "payment_method": profile["payment_method"],
+        "time_of_transaction": datetime.now().hour,
+        "previous_fraudulent_transactions": profile["previous_fraudulent_transactions"],
+        "account_age": profile["account_age"],
+        "number_of_transactions_last_24h": profile["number_of_transactions_last_24h"],
+    }
+    probability = score_transaction(artifact, model_payload)
     level = probability_to_level(probability)
     confirmed = bool(payload.get("confirmed", False))
 

@@ -15,20 +15,13 @@ riskForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const payload = {
+    account_or_phone: document.getElementById("account-or-phone").value.trim(),
     amount: Number(document.getElementById("amount").value),
     transaction_type: document.getElementById("transaction-type").value,
     payment_gateway: document.getElementById("payment-gateway").value,
     device_used: document.getElementById("device-used").value,
     location: document.getElementById("location").value,
     payment_method: document.getElementById("payment-method").value,
-    time_of_transaction: Number(document.getElementById("time-of-transaction").value),
-    previous_fraudulent_transactions: Number(
-      document.getElementById("previous-fraudulent-transactions").value
-    ),
-    account_age: Number(document.getElementById("account-age").value),
-    number_of_transactions_last_24h: Number(
-      document.getElementById("number-of-transactions-last-24h").value
-    ),
     confirmed: document.getElementById("confirmed").checked,
   };
 

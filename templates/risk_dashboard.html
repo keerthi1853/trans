@@ -26,6 +26,9 @@
       <article class="card risk-form-card">
         <h2>Transaction Input</h2>
         <form id="risk-form" class="risk-form">
+          <label>Account Number or Phone Number</label>
+          <input id="account-or-phone" type="text" placeholder="Enter registered account or phone" required />
+
           <label>Transaction Type</label>
           <select id="transaction-type">
             <option>P2P Transfer</option>
@@ -64,18 +67,6 @@
             <option>Biometric</option>
             <option>OTP</option>
           </select>
-
-          <label>Time of Transaction (0-23)</label>
-          <input id="time-of-transaction" type="number" min="0" max="23" value="12" required />
-
-          <label>Previous Fraudulent Transactions</label>
-          <input id="previous-fraudulent-transactions" type="number" min="0" value="0" required />
-
-          <label>Account Age (days)</label>
-          <input id="account-age" type="number" min="1" value="365" required />
-
-          <label>Number of Transactions Last 24H</label>
-          <input id="number-of-transactions-last-24h" type="number" min="0" value="3" required />
 
           <label for="amount">Transfer Amount (INR)</label>
           <div class="amount-input-wrap">
@@ -126,7 +117,19 @@
             <h3>Model Stage</h3>
             <p>UPI_Fraud_Detection_Model_Fixed.pkl is loaded for transaction verification.</p>
           </div>
+          <div class="rule-item blocked">
+            <h3>Profile Lookup Stage</h3>
+            <p>Account/Phone is used to fetch that user's history automatically for verification.</p>
+          </div>
         </div>
+        {% if sample_one %}
+        <p class="hint">Sample Phone: <code>{{ sample_one.phone }}</code></p>
+        <p class="hint">Sample Account: <code>{{ sample_one.account }}</code></p>
+        {% endif %}
+        {% if sample_two %}
+        <p class="hint">Sample Phone: <code>{{ sample_two.phone }}</code></p>
+        <p class="hint">Sample Account: <code>{{ sample_two.account }}</code></p>
+        {% endif %}
       </article>
     </section>
   </main>
